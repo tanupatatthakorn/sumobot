@@ -138,6 +138,18 @@ void frspin(int spd){
   
 }
 
+void blspin(int spd){
+
+  backward(0, spd);
+  
+}
+
+void brspin(int spd){
+
+  backward(spd, 0);
+  
+}
+
 void lspin(int spd){
   //left back
   digitalWrite(LINA, HIGH);
@@ -190,14 +202,19 @@ void Controller(int tmpCH1, int tmpCH2, int tmpC3, int tmpCH4){
   (LR<0)?LR=0:LR=LR;
   (LL<0)?LL=0:LL=LL;
 
-  if(LR>0){
+  if(LR>0 && RU>0){
     frspin(LR);
-  }else if(LL>0){
+  }else if(LL>0 && RU>0){
     flspin(LL);
   }else if(RU>0){
     forward(RU, RU);
+  }else if(RD>0 && LR>0){
+    blspin(LR);
+  }else if(RD>0 && LL>0){
+    brspin(LL);
   }else{
     backward(RD, RD);
   }
-  
+
 }
+  
