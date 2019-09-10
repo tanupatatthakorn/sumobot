@@ -22,7 +22,7 @@ int tmpCH1;
 int tmpCH2;
 int tmpCH3;
 int tmpCH4;
-
+boolean off = true;
 void setup() {
   // put your setup code here, to run once:
 
@@ -52,36 +52,48 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  tmpCH1 = pulseIn(CH1, HIGH);
-  tmpCH2 = pulseIn(CH2, HIGH);
-  tmpCH3 = pulseIn(CH3, HIGH);
-  tmpCH4 = pulseIn(CH4, HIGH);
 
-  debug();
+  //debug();
 
- Controller(tmpCH1, tmpCH2, tmpCH3, tmpCH4);
-  
   if(digitalRead(SW)==LOW){
-      //test();
-      
+    off = false;
+    delay(300);
+  }
+  
+  while(!off){
+    forward(50,50);
+    
+    linedetect(analogRead(LIR),analogRead(RIR));
+ 
+    if(digitalRead(SW)==LOW){
+      delay(300);
+      off = true;
       STOP();
-      while(1);
     }
   }
+  
+  Serial.println(digitalRead(SW));
+}
 
 void debug(){
-    Serial.print(tmpCH1);
-    Serial.print("\t");
-    Serial.print(tmpCH2);
-    Serial.print("\t");
-    Serial.print(tmpCH3);
-    Serial.print("\t");
-    Serial.print(tmpCH4);
-    Serial.print("\n");
+//    Serial.print("Channel Cooedinates: ");
+//    Serial.print(tmpCH1);
+//    Serial.print("\t");
+//    Serial.print(tmpCH2);
+//    Serial.print("\t");
+//    Serial.print(tmpCH3);
+//    Serial.print("\t");
+//    Serial.print(tmpCH4);
+//    Serial.print("\n");
     
-//    Serial.println(digitalRead(CH2));
-//    Serial.println(digitalRead(CH3));
-//    Serial.println(digitalRead(CH4));
+//    Serial.print("Line sensors: Left = ");
+//    Serial.print(analogRead(LIR));
+//    Serial.print(" Right = ");
+//    Serial.print(analogRead(RIR));
+//    Serial.print("\n");
+
+      Serial.print(off);
+      
 }
 
 void test(){
@@ -91,10 +103,12 @@ void test(){
 //      delay(2000);
 //      frspin(100);
 //      delay(2000);
-      lspin(100);
-      delay(2000);
-      rspin(100);
-      delay(2000);
+//      lspin(100);
+//      delay(2000);
+//      rspin(100);
+//      delay(2000);
+    blspin(255);
+    delay(600);
 }
 
 void forward(int lspd, int rspd){
@@ -176,7 +190,36 @@ void rspin(int spd){
   
 }
 
-void Controller(int tmpCH1, int tmpCH2, int tmpC3, int tmpCH4){
+void linedetect(int LIR, int RIR){
+
+  if(LIR>400){
+    backward(255, 255);
+    delay(100);
+    
+    lspin(255);
+    delay(350);
+
+  }
+  
+  if(RIR>400){
+    backward(255, 255);
+    delay(100);
+    
+    rspin(255);
+    delay(350);
+    
+  }
+
+  
+}
+
+void Controller(){
+
+  tmpCH1 = pulseIn(CH1, HIGH);
+  tmpCH2 = pulseIn(CH2, HIGH);
+  tmpCH3 = pulseIn(CH3, HIGH);
+  tmpCH4 = pulseIn(CH4, HIGH);
+  
   //for/back
   int RU = map(tmpCH2, 1600, 1981, 0, 255);
   int RD = map(tmpCH2, 1400, 995, 0, 255);
@@ -209,9 +252,9 @@ void Controller(int tmpCH1, int tmpCH2, int tmpC3, int tmpCH4){
   }else if(RU>0){
     forward(RU, RU);
   }else if(RD>0 && LR>0){
-    blspin(LR);
+    brspin(LR);
   }else if(RD>0 && LL>0){
-    brspin(LL);
+    blspin(LL);
   }else{
     backward(RD, RD);
   }
