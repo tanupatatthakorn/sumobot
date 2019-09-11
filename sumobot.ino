@@ -1,3 +1,4 @@
+#define LED 13
 //switch
 #define SW 2
 //motors
@@ -11,6 +12,13 @@
 #define LIR A5
 #define RIR A4
 //detection sensors
+#define NUM_SENS 3
+#define DIR0 A2
+#define DIR1 A3
+#define DIR2 A1
+//#define DIR3 A3
+//#define DIR4 A3
+
 
 //RC
 #define CH1 9
@@ -18,15 +26,31 @@
 #define CH3 7
 #define CH4 6
 
+//const values
+#define MAX_POWER 255
+#define MIN_POWER 0
+#define IR_THRESH 400
+#define DIR_THRESH 200
+//must be tuned later
+#define FULLTURN 355 //ms
+
+
 int tmpCH1;
 int tmpCH2;
 int tmpCH3;
 int tmpCH4;
 boolean off = true;
+
+struct sensVal{
+  int detect_sensors[NUM_SENS];
+  int line_sensors[2];
+}sensors;
+
 void setup() {
   // put your setup code here, to run once:
 
   Serial.begin(9600);
+  pinMode(LED, OUTPUT);
   //switches
   pinMode(SW, INPUT);
   //motors
@@ -40,7 +64,10 @@ void setup() {
   pinMode(LIR, INPUT);
   pinMode(RIR, INPUT);
   //detection sensors
-
+  pinMode(DIR0, INPUT);
+  pinMode(DIR1, INPUT);
+  pinMode(DIR2, INPUT);
+ 
   //RC
   pinMode(CH1, INPUT);
   pinMode(CH2, INPUT);
@@ -52,27 +79,41 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-
-  //debug();
+  readSensors();
+  debug();
 
   if(digitalRead(SW)==LOW){
     off = false;
     delay(300);
   }
+  Controller();
+  if(!off){
+    digitalWrite(LED,HIGH);
+    }else{
+      digitalWrite(LED,LOW);
+    }
   
   while(!off){
-    forward(50,50);
-    
-    linedetect(analogRead(LIR),analogRead(RIR));
+    forward(150,150);
+    delay(500);
+    pSTOP();
+    delay(500);
+    forward(150,150);
+    delay(500);
+    fSTOP();
+    delay(500);
+      
+    //Search();
+    //linedetect(sensors.line_sensors[0],sensors.line_sensors[1]);
  
     if(digitalRead(SW)==LOW){
       delay(300);
       off = true;
-      STOP();
+      fSTOP();
     }
   }
   
-  Serial.println(digitalRead(SW));
+
 }
 
 void debug(){
@@ -92,8 +133,9 @@ void debug(){
 //    Serial.print(analogRead(RIR));
 //    Serial.print("\n");
 
-      Serial.print(off);
-      
+      Serial.println(sensors.detect_sensors[0]);
+      //Serial.println(sensors.detect_sensors[1]);
+      //Serial.println(sensors.detect_sensors[2]);
 }
 
 void test(){
@@ -133,11 +175,24 @@ void backward(int lspd, int rspd){
   
 }
 
-void STOP(){
+void fSTOP(){
   digitalWrite(LINA, HIGH);  
   digitalWrite(LINB, HIGH);
   digitalWrite(RINA, HIGH);
   digitalWrite(RINB, HIGH);
+
+  analogWrite(LPWM, 0);
+  analogWrite(LPWM, 0);
+}
+
+void pSTOP(){
+  digitalWrite(LINA, LOW);  
+  digitalWrite(LINB, LOW);
+  digitalWrite(RINA, HIGH);
+  digitalWrite(RINB, HIGH);
+
+  analogWrite(LPWM, 0);
+  analogWrite(LPWM, 0);
 }
 
 void flspin(int spd){
@@ -190,27 +245,64 @@ void rspin(int spd){
   
 }
 
+void readSensors(){
+  sensors.detect_sensors[0] = analogRead(DIR0);
+  sensors.detect_sensors[1] = analogRead(DIR1);
+  sensors.detect_sensors[2] = analogRead(DIR2);
+
+  sensors.line_sensors[0] = analogRead(LIR);
+  sensors.line_sensors[1] = analogRead(RIR);
+}
+
 void linedetect(int LIR, int RIR){
 
-  if(LIR>400){
+  if(LIR>IR_THRESH){
     backward(255, 255);
     delay(100);
     
     lspin(255);
-    delay(350);
+    delay(FULLTURN);
 
   }
   
-  if(RIR>400){
+  if(RIR>IR_THRESH){
     backward(255, 255);
     delay(100);
     
     rspin(255);
-    delay(350);
+    delay(FULLTURN);
     
   }
 
   
+}
+
+void Search(){
+
+  if(sensors.detect_sensors[2]>DIR_THRESH){
+    rspin(100);
+  }
+  else if(sensors.detect_sensors[1]>DIR_THRESH){
+    forward(100,100);
+  }
+  else if(sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){
+    frspin(100);
+  }
+  else if(sensors.detect_sensors[0]>DIR_THRESH){
+    flspin(100); 
+  }
+  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){
+    pSTOP();
+  }
+  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH){
+    flspin(100);
+  }
+  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){
+    forward(100,100);
+  }
+  else{
+    fSTOP();
+  }
 }
 
 void Controller(){
