@@ -34,6 +34,12 @@
 //must be tuned later
 #define FULLTURN 355 //ms
 
+//MODES
+//default
+#define SEARCH 0
+#define ATTK 1
+#define SURVIVE 2
+
 
 int tmpCH1;
 int tmpCH2;
@@ -45,6 +51,16 @@ struct sensVal{
   int detect_sensors[NUM_SENS];
   int line_sensors[2];
 }sensors;
+
+struct flagsVal{
+ boolean leftEdge;
+ boolean rightEdge; 
+ boolean Wflag;
+ boolean NWflag;
+ boolean Nflag;
+ boolean NEflag;
+ boolean Eflag;  
+}flags;
 
 void setup() {
   // put your setup code here, to run once:
@@ -79,37 +95,40 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  readSensors();
+  //readSensors();
   debug();
 
   if(digitalRead(SW)==LOW){
     off = false;
     delay(300);
   }
-  Controller();
+  //Controller();
   if(!off){
     digitalWrite(LED,HIGH);
     }else{
       digitalWrite(LED,LOW);
     }
-  
+
+  int state = SEARCH;
   while(!off){
-    forward(150,150);
-    delay(500);
-    pSTOP();
-    delay(500);
-    forward(150,150);
-    delay(500);
-    fSTOP();
-    delay(500);
+
+    switch (state){
       
-    //Search();
-    //linedetect(sensors.line_sensors[0],sensors.line_sensors[1]);
- 
+      case SEARCH:
+      Search();  
+      if(sensors.line_sensors[0]>IR_THRESH || sensors.line_sensors[1]>IR_THRESH){
+        state = SURVIVE;
+      }
+      break;
+
+      case SURVIVE:
+      linedetect(sensors.line_sensors[0],sensors.line_sensors[1]);
+      break;
+    }
+    
     if(digitalRead(SW)==LOW){
       delay(300);
       off = true;
-      fSTOP();
     }
   }
   
@@ -117,6 +136,8 @@ void loop() {
 }
 
 void debug(){
+
+  readSensors();
 //    Serial.print("Channel Cooedinates: ");
 //    Serial.print(tmpCH1);
 //    Serial.print("\t");
@@ -133,9 +154,12 @@ void debug(){
 //    Serial.print(analogRead(RIR));
 //    Serial.print("\n");
 
-      Serial.println(sensors.detect_sensors[0]);
-      //Serial.println(sensors.detect_sensors[1]);
-      //Serial.println(sensors.detect_sensors[2]);
+      Serial.print(sensors.detect_sensors[0]);
+      Serial.print("\t");
+      Serial.print(sensors.detect_sensors[1]);
+      Serial.print("\t");
+      Serial.print(sensors.detect_sensors[2]);
+      Serial.print("\n");
 }
 
 void test(){
@@ -161,6 +185,8 @@ void forward(int lspd, int rspd){
 
   analogWrite(LPWM, lspd);
   analogWrite(RPWM, rspd);
+
+  //Serial.println("forward called");
   
 }
 
@@ -172,7 +198,8 @@ void backward(int lspd, int rspd){
 
   analogWrite(LPWM, lspd);
   analogWrite(RPWM, rspd);
-  
+
+  //Serial.println("backward called");
 }
 
 void fSTOP(){
@@ -183,6 +210,8 @@ void fSTOP(){
 
   analogWrite(LPWM, 0);
   analogWrite(LPWM, 0);
+
+  //Serial.println("fSTOP called");
 }
 
 void pSTOP(){
@@ -193,29 +222,39 @@ void pSTOP(){
 
   analogWrite(LPWM, 0);
   analogWrite(LPWM, 0);
+
+  //Serial.println("pSTOP called");
 }
 
 void flspin(int spd){
 
   forward(0, spd);
 
+  //Serial.println("flspin called");
+
 }
 
 void frspin(int spd){
 
   forward(spd, 0);
+
+  //Serial.println("frspin called");
   
 }
 
 void blspin(int spd){
 
   backward(0, spd);
+
+  //Serial.println("blspin called");
   
 }
 
 void brspin(int spd){
 
   backward(spd, 0);
+
+  //Serial.println("brspin called");
   
 }
 
@@ -229,6 +268,8 @@ void lspin(int spd){
 
   analogWrite(LPWM, spd);
   analogWrite(RPWM, spd);
+
+  //Serial.println("lspin called");
   
 }
 
@@ -242,6 +283,8 @@ void rspin(int spd){
 
   analogWrite(LPWM, spd);
   analogWrite(RPWM, spd);
+
+  //Serial.println("rspin called");
   
 }
 
@@ -279,25 +322,27 @@ void linedetect(int LIR, int RIR){
 
 void Search(){
 
-  if(sensors.detect_sensors[2]>DIR_THRESH){
+  readSensors();
+
+  if(sensors.detect_sensors[0]<DIR_THRESH && sensors.detect_sensors[1]<DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){//001
     rspin(100);
   }
-  else if(sensors.detect_sensors[1]>DIR_THRESH){
+  else if(sensors.detect_sensors[0]<DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]<DIR_THRESH){//010
     forward(100,100);
   }
-  else if(sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){
+  else if(sensors.detect_sensors[0]<DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){//011
     frspin(100);
   }
-  else if(sensors.detect_sensors[0]>DIR_THRESH){
-    flspin(100); 
+  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]<DIR_THRESH && sensors.detect_sensors[2]<DIR_THRESH){//100
+    lspin(100); 
   }
-  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){
+  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]<DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){//101
     pSTOP();
   }
-  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH){
+  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]<DIR_THRESH){//110
     flspin(100);
   }
-  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){
+  else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){//111
     forward(100,100);
   }
   else{
