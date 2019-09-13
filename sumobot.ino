@@ -45,7 +45,7 @@ int tmpCH1;
 int tmpCH2;
 int tmpCH3;
 int tmpCH4;
-boolean off = true;
+int mode = 0;
 
 struct sensVal {
   int detect_sensors[NUM_SENS];
@@ -111,19 +111,25 @@ void loop() {
   //Controller();
   fSTOP();
 
-  if (digitalRead(SW) == LOW) {
-    off = false;
+  if (digitalRead(SW) == LOW && digitalRead(SW)) {
+    mode = 1;
     delay(300);
   }
 
-  if (!off) {
+  if(digitalRead(SW) == LOW){
+    mode = 2;
+    delay(300);
+  }
+
+  if (mode > 0) {
     digitalWrite(LED, HIGH);
   } else {
     digitalWrite(LED, LOW);
   }
 
   int state = SEARCH;
-  while (!off) {
+  //mode 1
+  while (mode == 1) {
     debug();
 
     switch (state) {
@@ -142,6 +148,8 @@ void loop() {
 
           rspin(255);
           delay(FULLTURN * 5 / 6);
+          frspin(255);
+          delay(250);
         }
         if (sensors.line_sensors[1] > IR_THRESH) {
           backward(255, 255);
@@ -149,6 +157,8 @@ void loop() {
 
           lspin(255);
           delay(FULLTURN * 5 / 6);
+          flspin(255);
+          delay(250);
         }
 
         state = SEARCH;
@@ -156,10 +166,20 @@ void loop() {
 
     if (digitalRead(SW) == LOW) {
       delay(300);
-      off = true;
+      mode = 0;
     }
   }
 
+  //mode 2
+  while(mode == 2){
+    test();
+   
+    mode = 0;
+    if (digitalRead(SW) == LOW){
+      delay(300);
+      mode = 0;
+    }
+  }
 
 }
 
@@ -218,8 +238,16 @@ void test() {
   //      delay(2000);
   //      rspin(100);
   //      delay(2000);
-  blspin(255);
-  delay(600);
+//  blspin(255);
+//  delay(600);
+
+  //forward(200, 200);
+  //delay(350);
+  flspin(255);
+  delay(FULLTURN*1/4);
+  larc(255, MAX_POWER*0.2);
+  delay(750);
+  pSTOP();
 }
 
 void forward(int lspd, int rspd) {
@@ -301,6 +329,16 @@ void brspin(int spd) {
 
   //Serial.println("brspin called");
 
+}
+
+void larc(int spd, int factor){
+
+  forward(spd-factor, spd);
+}
+
+void rarc(int spd, int factor){
+
+  forward(spd, spd-factor);
 }
 
 void lspin(int spd) {
