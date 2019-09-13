@@ -62,6 +62,17 @@ struct flagsVal{
  boolean Eflag;  
 }flags;
 
+//struct flagsVal{
+//  unsigned char leftEdge : 1,
+//                rightEdge : 1,
+//                Wflag : 1,
+//                NWflag : 1,
+//                Nflag : 1,
+//                NEflag : 1,
+//                Eflag : 1,
+//                unused : 1;
+//}flags;
+
 void setup() {
   // put your setup code here, to run once:
 
@@ -97,12 +108,14 @@ void loop() {
 
   //readSensors();
   debug();
+  //Controller();
+  fSTOP();
 
   if(digitalRead(SW)==LOW){
     off = false;
     delay(300);
   }
-  //Controller();
+
   if(!off){
     digitalWrite(LED,HIGH);
     }else{
@@ -111,19 +124,34 @@ void loop() {
 
   int state = SEARCH;
   while(!off){
+    debug();
 
     switch (state){
       
       case SEARCH:
-      Search();  
-      if(sensors.line_sensors[0]>IR_THRESH || sensors.line_sensors[1]>IR_THRESH){
-        state = SURVIVE;
-      }
-      break;
+        Search();  
+        if(sensors.line_sensors[0]>IR_THRESH || sensors.line_sensors[1]>IR_THRESH){
+          state = SURVIVE;
+        }
+        break;
 
       case SURVIVE:
-      linedetect(sensors.line_sensors[0],sensors.line_sensors[1]);
-      break;
+        if(sensors.line_sensors[0]>IR_THRESH){
+          backward(255, 255);
+          delay(150);
+    
+          rspin(255);
+          delay(FULLTURN*5/6);
+        }
+        if(sensors.line_sensors[1]>IR_THRESH){
+          backward(255, 255);
+          delay(100);
+    
+          lspin(255);
+          delay(FULLTURN*5/6);
+        }
+
+        state = SEARCH;
     }
     
     if(digitalRead(SW)==LOW){
@@ -131,8 +159,8 @@ void loop() {
       off = true;
     }
   }
-  
 
+  
 }
 
 void debug(){
@@ -154,12 +182,29 @@ void debug(){
 //    Serial.print(analogRead(RIR));
 //    Serial.print("\n");
 
-      Serial.print(sensors.detect_sensors[0]);
-      Serial.print("\t");
-      Serial.print(sensors.detect_sensors[1]);
-      Serial.print("\t");
-      Serial.print(sensors.detect_sensors[2]);
-      Serial.print("\n");
+//      Serial.print(sensors.detect_sensors[0]);
+//      Serial.print("\t");
+//      Serial.print(sensors.detect_sensors[1]);
+//      Serial.print("\t");
+//      Serial.print(sensors.detect_sensors[2]);
+//      Serial.print("\n");
+
+//----------------read flag--------------------
+    Serial.print(flags.leftEdge);
+    Serial.print("\t");
+    Serial.print(flags.rightEdge);
+    Serial.print("\t");
+    Serial.print(flags.Wflag);
+    Serial.print("\t");
+    Serial.print(flags.NWflag);
+    Serial.print("\t");
+    Serial.print(flags.Nflag);
+    Serial.print("\t");
+    Serial.print(flags.NEflag);
+    Serial.print("\t");
+    Serial.print(flags.Eflag);
+    Serial.print("\n");
+    
 }
 
 void test(){
@@ -297,14 +342,24 @@ void readSensors(){
   sensors.line_sensors[1] = analogRead(RIR);
 }
 
+void clearflags(){
+  flags.leftEdge = false;
+  flags.rightEdge = false;
+  flags.Wflag = false;
+  flags.NWflag = false;
+  flags.Nflag = false;
+  flags.NEflag = false;
+  flags.Eflag = false;
+}
+
 void linedetect(int LIR, int RIR){
 
   if(LIR>IR_THRESH){
     backward(255, 255);
-    delay(100);
+    delay(150);
     
     lspin(255);
-    delay(FULLTURN);
+    delay(FULLTURN*3/4);
 
   }
   
@@ -313,7 +368,7 @@ void linedetect(int LIR, int RIR){
     delay(100);
     
     rspin(255);
-    delay(FULLTURN);
+    delay(FULLTURN*3/4);
     
   }
 
@@ -325,29 +380,39 @@ void Search(){
   readSensors();
 
   if(sensors.detect_sensors[0]<DIR_THRESH && sensors.detect_sensors[1]<DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){//001
-    rspin(100);
+    rspin(255);
+    flags.NEflag = true;
   }
   else if(sensors.detect_sensors[0]<DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]<DIR_THRESH){//010
-    forward(100,100);
+    forward(255,255);
+    flags.Nflag = true;
   }
   else if(sensors.detect_sensors[0]<DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){//011
-    frspin(100);
+    frspin(255);
+    flags.NEflag = true;
   }
   else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]<DIR_THRESH && sensors.detect_sensors[2]<DIR_THRESH){//100
-    lspin(100); 
+    lspin(255); 
+    flags.NWflag = true;
   }
   else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]<DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){//101
     pSTOP();
   }
   else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]<DIR_THRESH){//110
-    flspin(100);
+    flspin(255);
+    flags.NWflag = true;
   }
   else if(sensors.detect_sensors[0]>DIR_THRESH && sensors.detect_sensors[1]>DIR_THRESH && sensors.detect_sensors[2]>DIR_THRESH){//111
-    forward(100,100);
+    forward(255,255);
+    flags.Nflag = true;
+    flags.NEflag = true;
+    flags.NWflag = true;
   }
   else{
     fSTOP();
+    clearflags();
   }
+
 }
 
 void Controller(){
