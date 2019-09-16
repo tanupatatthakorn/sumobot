@@ -16,36 +16,38 @@
 #define DIR0 A2
 #define DIR1 A3
 #define DIR2 A1
-//#define DIR3 A3
-//#define DIR4 A3
+#define DIR3 9
+#define DIR4 7
 
 
 //RC
-#define CH1 9
+//#define CH1 9
 #define CH2 8
-#define CH3 7
+//#define CH3 7
 #define CH4 6
 
 //const values
 #define MAX_POWER 255
 #define MIN_POWER 0
 #define IR_THRESH 400
-#define DIR_THRESH 200
+#define DIR_THRESH 350
 //must be tuned later
 #define FULLTURN 355 //ms
 
 //MODES
 //default
 #define SEARCH 0
-#define ATTK 1
-#define SURVIVE 2
+#define HUNT 1
+#define ATTK 2
+#define SURVIVE 3
 
 
 int tmpCH1;
 int tmpCH2;
 int tmpCH3;
 int tmpCH4;
-int mode = 0;
+int mode; 
+int state;
 
 struct sensVal {
   int detect_sensors[NUM_SENS];
@@ -96,11 +98,12 @@ void setup() {
   pinMode(DIR2, INPUT);
 
   //RC
-  pinMode(CH1, INPUT);
+  //pinMode(CH1, INPUT);
   pinMode(CH2, INPUT);
-  pinMode(CH3, INPUT);
+  //pinMode(CH3, INPUT);
   pinMode(CH4, INPUT);
 
+  mode = 0;
 }
 
 void loop() {
@@ -111,12 +114,12 @@ void loop() {
   //Controller();
   fSTOP();
 
-  if (digitalRead(SW) == LOW && digitalRead(SW)) {
+  if (digitalRead(SW) == LOW ) {
     mode = 1;
     delay(300);
   }
 
-  if(digitalRead(SW) == LOW){
+  if(digitalRead(SW) == LOW && (analogRead(DIR0)>DIR_THRESH)){
     mode = 2;
     delay(300);
   }
@@ -127,14 +130,25 @@ void loop() {
     digitalWrite(LED, LOW);
   }
 
-  int state = SEARCH;
+  state = SEARCH;
+//---------------MODE 1----------------------
   //mode 1
   while (mode == 1) {
     debug();
 
     switch (state) {
-
       case SEARCH:
+        forward(MAX_POWER*0.5, MAX_POWER*0.5);
+        if(sensors.detect_sensors[0] > DIR_THRESH || sensors.detect_sensors[1] > DIR_THRESH || sensors.detect_sensors[2] > DIR_THRESH || sensors.detect_sensors[3] > DIR_THRESH || sensors.detect_sensors[4] > DIR_THRESH){
+          state = HUNT;
+        }else if (sensors.line_sensors[0] > IR_THRESH || sensors.line_sensors[1] > IR_THRESH) {
+          state = SURVIVE;
+        }else {
+          state = SEARCH;
+        }
+        break;
+      
+      case HUNT:
         Search();
         if (sensors.line_sensors[0] > IR_THRESH || sensors.line_sensors[1] > IR_THRESH) {
           state = SURVIVE;
@@ -150,8 +164,7 @@ void loop() {
           delay(FULLTURN * 5 / 6);
           frspin(255);
           delay(250);
-        }
-        if (sensors.line_sensors[1] > IR_THRESH) {
+        }else if (sensors.line_sensors[1] > IR_THRESH) {
           backward(255, 255);
           delay(100);
 
@@ -159,9 +172,9 @@ void loop() {
           delay(FULLTURN * 5 / 6);
           flspin(255);
           delay(250);
+        }else {
+          state = SEARCH;
         }
-
-        state = SEARCH;
     }
 
     if (digitalRead(SW) == LOW) {
@@ -169,7 +182,9 @@ void loop() {
       mode = 0;
     }
   }
+//------------------END OF MODE 1-----------------------
 
+//----------------MODE 2------------------------
   //mode 2
   while(mode == 2){
     test();
@@ -180,21 +195,20 @@ void loop() {
       mode = 0;
     }
   }
+//-------------END OF MODE 2---------------------
+
 
 }
 
 void debug() {
 
   readSensors();
-  //    Serial.print("Channel Cooedinates: ");
-  //    Serial.print(tmpCH1);
-  //    Serial.print("\t");
-  //    Serial.print(tmpCH2);
-  //    Serial.print("\t");
-  //    Serial.print(tmpCH3);
-  //    Serial.print("\t");
-  //    Serial.print(tmpCH4);
-  //    Serial.print("\n");
+  
+//      Serial.print("Channel Cooedinates: ");
+//      Serial.print(tmpCH2);
+//      Serial.print("\t");
+//      Serial.print(tmpCH4);
+//      Serial.print("\n");
 
   //    Serial.print("Line sensors: Left = ");
   //    Serial.print(analogRead(LIR));
@@ -202,29 +216,33 @@ void debug() {
   //    Serial.print(analogRead(RIR));
   //    Serial.print("\n");
 
-  //      Serial.print(sensors.detect_sensors[0]);
-  //      Serial.print("\t");
-  //      Serial.print(sensors.detect_sensors[1]);
-  //      Serial.print("\t");
-  //      Serial.print(sensors.detect_sensors[2]);
-  //      Serial.print("\n");
+        Serial.print(sensors.detect_sensors[0]);
+        Serial.print("\t");
+        Serial.print(sensors.detect_sensors[1]);
+        Serial.print("\t");
+        Serial.print(sensors.detect_sensors[2]);
+        Serial.print("\n");
 
   //----------------read flag--------------------
-  Serial.print(flags.leftEdge);
-  Serial.print("\t");
-  Serial.print(flags.rightEdge);
-  Serial.print("\t");
-  Serial.print(flags.Wflag);
-  Serial.print("\t");
-  Serial.print(flags.NWflag);
-  Serial.print("\t");
-  Serial.print(flags.Nflag);
-  Serial.print("\t");
-  Serial.print(flags.NEflag);
-  Serial.print("\t");
-  Serial.print(flags.Eflag);
-  Serial.print("\n");
+//  Serial.print(flags.leftEdge);
+//  Serial.print("\t");
+//  Serial.print(flags.rightEdge);
+//  Serial.print("\t");
+//  Serial.print(flags.Wflag);
+//  Serial.print("\t");
+//  Serial.print(flags.NWflag);
+//  Serial.print("\t");
+//  Serial.print(flags.Nflag);
+//  Serial.print("\t");
+//  Serial.print(flags.NEflag);
+//  Serial.print("\t");
+//  Serial.print(flags.Eflag);
+//  Serial.print("\n");
 
+//    Serial.print("MODE: ");
+//    Serial.print(mode);
+//    Serial.println(state);
+    
 }
 
 void test() {
@@ -455,28 +473,36 @@ void Search() {
 
 void Controller() {
 
-  tmpCH1 = pulseIn(CH1, HIGH);
+  //tmpCH1 = pulseIn(CH1, HIGH);
   tmpCH2 = pulseIn(CH2, HIGH);
-  tmpCH3 = pulseIn(CH3, HIGH);
+  //tmpCH3 = pulseIn(CH3, HIGH);
   tmpCH4 = pulseIn(CH4, HIGH);
 
   //for/back
-  int RU = map(tmpCH2, 1600, 1981, 0, 255);
-  int RD = map(tmpCH2, 1400, 995, 0, 255);
+  int RU = map(tmpCH2, 1600, 1974, 0, 255);
+  int RD = map(tmpCH2, 1400, 993, 0, 255);
   if (tmpCH2 > 1400 && tmpCH2 < 1600) {
     RU = 0;
     RD = 0;
+  }else if(tmpCH2 > 1974){
+    RU = 255;
+  }else if(tmpCH2 < 993){
+    RD = 255;
   }
   if (tmpCH2 == 0) {
     RU = 0;
     RD = 0;
   }
   //left/right
-  int LR = map(tmpCH4, 1550, 1981, 0, 255);
-  int LL = map(tmpCH4, 1450, 995, 0, 255);
+  int LR = map(tmpCH4, 1550, 1974, 0, 255);
+  int LL = map(tmpCH4, 1450, 993, 0, 255);
   if (tmpCH4 > 1400 && tmpCH4 < 1600) {
     LR = 0;
     LL = 0;
+  }else if(tmpCH4 > 1974){
+    LR = 255;
+  }else if(tmpCH4 < 993){
+    LL = 255;
   }
 
   (RU < 0) ? RU = 0 : RU = RU;
